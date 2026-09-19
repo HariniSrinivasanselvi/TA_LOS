@@ -1,0 +1,47 @@
+<div class="panel-heading">
+  <div><span class="step">◎</span><h2>User management</h2></div>
+  <span class="required-note">{{ users.length }} users</span>
+</div>
+
+<div class="alert error" *ngIf="error">{{ error }}</div>
+<div class="alert success" *ngIf="message">{{ message }}</div>
+
+<div class="loading-block" *ngIf="loading">
+  <div class="spinner"></div>
+  <p>Loading users…</p>
+</div>
+
+<div class="empty-state panel" *ngIf="!loading && users.length === 0">
+  <h2>No users yet</h2>
+  <p>Once someone logs in, they'll appear here so you can assign their role.</p>
+</div>
+
+<table class="user-table" *ngIf="!loading && users.length > 0">
+  <thead>
+    <tr>
+      <th>User</th>
+      <th>Email</th>
+      <th>Role</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let user of users">
+      <td class="name-cell">{{ user.displayName }}</td>
+      <td>{{ user.email || '—' }}</td>
+      <td>
+        <span class="role-badge" [class.admin]="user.roleCode === adminRole">{{ user.roleName }}</span>
+      </td>
+      <td class="actions-cell">
+        <select
+          [ngModel]="user.roleCode"
+          (ngModelChange)="changeRole(user, $event)"
+          [disabled]="busyUserId === user.userId"
+        >
+          <option [value]="dealerRole">Dealer</option>
+          <option [value]="adminRole">Admin</option>
+        </select>
+      </td>
+    </tr>
+  </tbody>
+</table>

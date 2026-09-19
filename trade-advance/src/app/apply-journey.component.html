@@ -1,0 +1,180 @@
+<div class="engine-note">
+  <span>⛭</span>
+  <div>
+    <strong>Trade Advance</strong>
+    <p>Submit your Apply Now request. Credit review, VKYC and limit sanction are handled automatically once approved.</p>
+  </div>
+</div>
+
+<div class="timeline">
+  <div class="timeline-step" *ngFor="let step of timeline" [class]="step.status">
+    <div class="dot">{{ step.status === 'done' ? '✓' : step.status === 'failed' ? '×' : step.status === 'skipped' ? '–' : '' }}</div>
+    <span>{{ step.label }}</span>
+  </div>
+</div>
+
+<div class="workspace single">
+  <!-- Stage 1: Apply Now -->
+  <form class="panel form-panel" *ngIf="stage === 'apply'" (ngSubmit)="submitApplication()">
+    <div class="panel-heading">
+      <div><span class="step">01</span><h2>Apply Now</h2></div>
+      <span class="required-note">Enter value</span>
+    </div>
+    <div class="alert error" *ngIf="submitError">{{ submitError }}</div>
+    <div class="field-row">
+      <label>
+        <span>Dealer code</span>
+        <input name="applyDealerCode" [(ngModel)]="apply.dealerCode" required>
+      </label>
+      <label>
+        <span>Dealer name</span>
+        <input name="applyDealerName" [(ngModel)]="apply.dealerName" required>
+      </label>
+    </div>
+    <label>
+      <span>Vintage with TVSCS</span>
+      <div class="input-unit"><input type="number" min="0" name="applyVintage" [(ngModel)]="apply.dealerVintageMonths" required><b>months</b></div>
+    </label>
+    <label>
+      <span>Last 3-month average disbursal</span>
+      <div class="input-unit prefix"><b>₹</b><input type="number" min="0" name="applyDisbursal" [(ngModel)]="apply.lastThreeMonthAverageDisbursal" required></div>
+    </label>
+    <label class="toggle-row">
+      <div><span>RCU fraud flag raised</span><small>Any active RCU fraud observation</small></div>
+      <input type="checkbox" name="applyRcu" [(ngModel)]="apply.rcuFraudFlagged"><i></i>
+    </label>
+    <label>
+      <span>Requested Trade Advance amount</span>
+      <div class="input-unit prefix"><b>₹</b><input type="number" min="0" name="requestedAmount" [(ngModel)]="apply.requestedAmount" required></div>
+      <small>The value you want to draw down</small>
+    </label>
+    <button class="primary" type="submit" [disabled]="submitLoading">
+      {{ submitLoading ? 'Submitting…' : 'Submit application' }}
+      <span>→</span>
+    </button>
+  </form>
+
+  <!-- Stage: waiting on deviation approval -->
+  <div class="panel form-panel" *ngIf="stage === 'waiting'">
+    <div class="panel-heading">
+      <div><span class="step">02</span><h2>Credit review in progress</h2></div>
+      <span class="required-note">Awaiting decision</span>
+    </div>
+    <div class="loading-block">
+      <div class="spinner"></div>
+      <p>Your application is being reviewed. We'll move you to the next step automatically once it's decided.</p>
+    </div>
+  </div>
+
+  <!-- Stage: VKYC -->
+  <form class="panel form-panel" *ngIf="stage === 'vkyc'" (ngSubmit)="submitVkyc()">
+    <div class="panel-heading">
+      <div><span class="step">03</span><h2>Video KYC</h2></div>
+      <span class="required-note">Required</span>
+    </div>
+    <div class="alert error" *ngIf="vkycError">{{ vkycError }}</div>
+
+    <div class="field-row">
+      <label>
+        <span>Full name</span>
+        <input name="vkycName" [(ngModel)]="vkyc.dealerName" required>
+      </label>
+      <label>
+        <span>Mobile number</span>
+        <input name="vkycPhone" [(ngModel)]="vkyc.phoneNumber" placeholder="10-digit mobile number" required>
+      </label>
+    </div>
+    <div class="field-row">
+      <label>
+        <span>Email</span>
+        <input type="email" name="vkycEmail" [(ngModel)]="vkyc.email" required>
+      </label>
+      <label>
+        <span>Aadhaar number</span>
+        <input name="vkycAadhaar" [(ngModel)]="vkyc.aadhaar" placeholder="12-digit Aadhaar" maxlength="12" required>
+      </label>
+    </div>
+    <label>
+      <span>PAN</span>
+      <input name="vkycPan" [(ngModel)]="vkyc.pan" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase">
+    </label>
+
+    <div class="camera-block">
+      <span class="camera-label">Live photo capture</span>
+      <div class="alert error" *ngIf="cameraError">{{ cameraError }}</div>
+
+      <div class="camera-frame" *ngIf="!capturedImage">
+        <video #cameraVideo autoplay playsinline muted></video>
+      </div>
+      <div class="camera-frame captured" *ngIf="capturedImage">
+        <img [src]="capturedImage" alt="Captured photo">
+      </div>
+      <canvas #captureCanvas hidden></canvas>
+
+      <div class="camera-actions">
+        <button type="button" class="secondary" *ngIf="!cameraStream && !capturedImage" (click)="startCamera()">
+          Start camera
+        </button>
+        <button type="button" class="secondary" *ngIf="cameraStream && !capturedImage" (click)="capturePhoto()">
+          Capture photo
+        </button>
+        <button type="button" class="secondary" *ngIf="capturedImage" (click)="retakePhoto()">
+          Retake
+        </button>
+      </div>
+      <small>Your photo is used only to verify your identity and is masked wherever displayed.</small>
+    </div>
+
+    <button class="primary" type="submit" [disabled]="vkycSubmitting || !capturedImage">
+      {{ vkycSubmitting ? 'Submitting VKYC…' : 'Submit VKYC' }}
+      <span>→</span>
+    </button>
+  </form>
+
+  <!-- Stage: processing -->
+  <div class="panel form-panel" *ngIf="stage === 'processing'">
+    <div class="loading-block">
+      <div class="spinner"></div>
+      <p>Processing your application…</p>
+    </div>
+  </div>
+
+  <!-- Stage: notify -->
+  <div class="panel form-panel" *ngIf="stage === 'notify'">
+    <div class="panel-heading">
+      <div><span class="step">✓</span><h2>Status</h2></div>
+      <span class="required-note">Final status</span>
+    </div>
+    <div class="decision-card" [class.approved]="!finalRejected" [class.rejected]="finalRejected">
+      <div class="decision-icon">{{ finalRejected ? '!' : '✓' }}</div>
+      <div>
+        <span>DECISION</span>
+        <h2>{{ finalRejected ? 'Trade advance rejected' : (finalStatusLabel || 'Trade advance limit approved') }}</h2>
+        <p *ngIf="!finalRejected && finalScfReference">{{ apply.dealerName }} · {{ formatCurrency(finalSanctionedAmount) }} · Ref {{ finalScfReference }}</p>
+        <p *ngIf="finalRejected">{{ apply.dealerName }} · {{ apply.dealerCode }}</p>
+      </div>
+    </div>
+    <p class="hint" *ngIf="finalRejected">{{ finalRejectionReason }}</p>
+    <p class="hint" *ngIf="!finalRejected && finalScfReference">
+      🎉 Notification sent to {{ apply.dealerName }}: your Trade Advance limit of {{ formatCurrency(finalSanctionedAmount) }}
+      has been approved and updated in SCF (Ref: {{ finalScfReference }}).
+    </p>
+    <button class="primary" (click)="restart()">
+      Start a new application
+      <span>→</span>
+    </button>
+  </div>
+</div>
+
+<!-- "Check with XXX Credit" popup shown while a deviation is pending -->
+<div class="modal-overlay" *ngIf="showCreditPopup">
+  <div class="modal-card">
+    <div class="modal-icon">◔</div>
+    <h2>Check with XXX Credit</h2>
+    <p>
+      Your requested amount needs an additional review by our credit team. We'll notify you as soon
+      as a decision is made — no further action is needed from you right now.
+    </p>
+    <button class="primary" (click)="dismissCreditPopup()">Got it<span>→</span></button>
+  </div>
+</div>

@@ -1,0 +1,556 @@
+<div class="auth-gate" *ngIf="authLoading">
+  <div class="spinner"></div>
+</div>
+
+<div class="auth-gate" *ngIf="!authLoading && !currentUser?.authenticated">
+  <div class="auth-card">
+    <div class="brand-mark">TA</div>
+    <h1>Trade Advance</h1>
+    <p>Sign in to continue to your dashboard.</p>
+    <button class="primary" (click)="login()">Log in<span>→</span></button>
+  </div>
+</div>
+
+<div class="app-shell" *ngIf="!authLoading && currentUser?.authenticated">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">TA</div>
+      <div>
+        <strong>Trade Advance</strong>
+        <span>Rule Engine</span>
+      </div>
+    </div>
+    <nav>
+      <button *ngIf="hasMenu('/evaluate')" [class.active]="activeTab === 'evaluate'" (click)="setTab('evaluate')">
+        <span class="nav-icon">◎</span>
+        Eligibility check
+      </button>
+      <button *ngIf="hasMenu('/configure')" [class.active]="activeTab === 'configure'" (click)="setTab('configure')">
+        <span class="nav-icon">≡</span>
+        Rule configuration
+      </button>
+      <button *ngIf="hasMenu('/credit')" [class.active]="activeTab === 'credit'" (click)="setTab('credit')">
+        <span class="nav-icon">⛨</span>
+        Credit check
+      </button>
+      <button *ngIf="hasMenu('/credit-configure')" [class.active]="activeTab === 'credit-configure'" (click)="setTab('credit-configure')">
+        <span class="nav-icon">⚙</span>
+        Credit policy
+      </button>
+      <button *ngIf="hasMenu('/deviation-approval')" [class.active]="activeTab === 'deviation-approval'" (click)="setTab('deviation-approval')">
+        <span class="nav-icon">◈</span>
+        Deviation approval
+      </button>
+      <button *ngIf="hasMenu('/journey')" [class.active]="activeTab === 'journey'" (click)="setTab('journey')">
+        <span class="nav-icon">➜</span>
+        Apply for Trade Advance
+      </button>
+      <button *ngIf="hasMenu('/user-management')" [class.active]="activeTab === 'user-management'" (click)="setTab('user-management')">
+        <span class="nav-icon">◎</span>
+        User management
+      </button>
+    </nav>
+    <div class="user-card">
+      <strong>{{ currentUser?.displayName }}</strong>
+      <span>{{ isAdmin ? 'Admin' : 'Dealer' }}</span>
+      <button class="logout" (click)="logout()">Log out</button>
+    </div>
+    <div class="engine-card">
+      <div class="engine-status"><span></span> Engine connected</div>
+      <strong>GoRules JDM</strong>
+      <p>Spring Boot 3 · Java 17</p>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">BUSINESS RULES ENGINE</p>
+        <h1>
+          {{ activeTab === 'evaluate' ? 'Dealer eligibility check'
+            : activeTab === 'configure' ? 'Rule configuration'
+            : activeTab === 'credit' ? 'Dealer credit check'
+            : activeTab === 'credit-configure' ? 'Credit policy configuration'
+            : activeTab === 'deviation-approval' ? 'Deviation approval'
+            : activeTab === 'user-management' ? 'User management'
+            : 'Apply for Trade Advance' }}
+        </h1>
+        <p class="subtitle" *ngIf="activeTab === 'evaluate'">
+          Evaluate initial Trade Advance eligibility with a full decision trace.
+        </p>
+        <p class="subtitle" *ngIf="activeTab === 'configure'">
+          Maintain thresholds without changing application code.
+        </p>
+        <p class="subtitle" *ngIf="activeTab === 'credit'">
+          Evaluate the Trade Advance credit policy: bureau, continuity, KYC, limits, financials, portfolio, risk and rating.
+        </p>
+        <p class="subtitle" *ngIf="activeTab === 'credit-configure'">
+          Maintain credit policy thresholds without changing application code.
+        </p>
+        <p class="subtitle" *ngIf="activeTab === 'journey'">
+          The end-to-end dealer journey: Apply Now → Check eligibility → Deviation → VKYC → Credit BRE → Interface to SCF → Notify.
+        </p>
+        <p class="subtitle" *ngIf="activeTab === 'user-management'">
+          Assign the Dealer or Admin role to every user who has logged in.
+        </p>
+      </div>
+      <div class="version-pill" *ngIf="activeTab === 'evaluate' || activeTab === 'configure'">
+        <span>Active rules</span>
+        <strong>Version {{ config.version }}</strong>
+      </div>
+      <div class="version-pill" *ngIf="activeTab === 'credit' || activeTab === 'credit-configure'">
+        <span>Active policy</span>
+        <strong>Version {{ creditConfig.version }}</strong>
+      </div>
+    </header>
+
+    <div class="alert error" *ngIf="(activeTab === 'evaluate' || activeTab === 'configure') && error">{{ error }}</div>
+    <div class="alert error" *ngIf="(activeTab === 'credit' || activeTab === 'credit-configure') && creditError">{{ creditError }}</div>
+
+    <section *ngIf="activeTab === 'evaluate'" class="workspace">
+      <form class="panel form-panel" (ngSubmit)="evaluate()">
+        <div class="panel-heading">
+          <div>
+            <span class="step">01</span>
+            <h2>Dealer inputs</h2>
+          </div>
+          <span class="required-note">All fields required</span>
+        </div>
+
+        <div class="field-row">
+          <label>
+            <span>Dealer code</span>
+            <input name="dealerCode" [(ngModel)]="dealer.dealerCode" required>
+          </label>
+          <label>
+            <span>Dealer name</span>
+            <input name="dealerName" [(ngModel)]="dealer.dealerName" required>
+          </label>
+        </div>
+        <label>
+          <span>Vintage with TVSCS</span>
+          <div class="input-unit">
+            <input type="number" min="0" name="dealerVintageMonths" [(ngModel)]="dealer.dealerVintageMonths" required>
+            <b>months</b>
+          </div>
+          <small>Minimum active relationship duration</small>
+        </label>
+        <label>
+          <span>Last 3-month average disbursal</span>
+          <div class="input-unit prefix">
+            <b>₹</b>
+            <input type="number" min="0" name="lastThreeMonthAverageDisbursal" [(ngModel)]="dealer.lastThreeMonthAverageDisbursal" required>
+          </div>
+          <small>Use the non-seasonal monthly average</small>
+        </label>
+        <label>
+          <span>Net bounce percentage</span>
+          <div class="input-unit">
+            <input type="number" min="0" step="0.1" name="netBouncePercentage" [(ngModel)]="dealer.netBouncePercentage" required>
+            <b>%</b>
+          </div>
+        </label>
+        <label class="toggle-row">
+          <div>
+            <span>RCU fraud flag raised</span>
+            <small>Any active RCU fraud observation</small>
+          </div>
+          <input type="checkbox" name="rcuFraudFlagged" [(ngModel)]="dealer.rcuFraudFlagged">
+          <i></i>
+        </label>
+        <button class="primary" type="submit" [disabled]="loading">
+          {{ loading ? 'Evaluating…' : 'Run eligibility check' }}
+          <span>→</span>
+        </button>
+      </form>
+
+      <div class="results-column">
+        <div class="empty-state panel" *ngIf="!result">
+          <div class="radar"><span></span></div>
+          <h2>Ready to evaluate</h2>
+          <p>Enter dealer information and run the rule engine to see a decision with each rule outcome.</p>
+          <div class="rule-preview">
+            <span>4</span>
+            <div><strong>Active criteria</strong><small>Vintage · Sales · Credit · Risk</small></div>
+          </div>
+        </div>
+
+        <ng-container *ngIf="result">
+          <div class="decision-card" [class.approved]="result.eligible" [class.rejected]="!result.eligible">
+            <div class="decision-icon">{{ result.eligible ? '✓' : '!' }}</div>
+            <div>
+              <span>DECISION</span>
+              <h2>{{ result.eligible ? 'Eligible for Trade Advance' : 'Not eligible for Trade Advance' }}</h2>
+              <p>{{ result.dealerName }} · {{ result.dealerCode }}</p>
+            </div>
+          </div>
+
+          <div class="panel trace">
+            <div class="panel-heading">
+              <div><span class="step">02</span><h2>Decision trace</h2></div>
+              <span>{{ result.outcomes.length }} rules evaluated</span>
+            </div>
+            <article *ngFor="let outcome of result.outcomes">
+              <div class="outcome-icon" [class.pass]="outcome.passed">{{ outcome.passed ? '✓' : '×' }}</div>
+              <div class="outcome-copy">
+                <div><strong>{{ outcome.label }}</strong><span [class.pass-text]="outcome.passed">{{ outcome.passed ? 'Passed' : 'Failed' }}</span></div>
+                <p>{{ outcome.actual }} <em>against</em> {{ outcome.expected }}</p>
+                <small>{{ outcome.reason }}</small>
+              </div>
+            </article>
+          </div>
+          <div class="next-step">
+            <div><span>→</span><div><strong>Next step</strong><p>Continue to Apply for Trade Advance</p></div></div>
+            <small>All dealers continue, regardless of decision.</small>
+          </div>
+        </ng-container>
+      </div>
+    </section>
+
+    <section *ngIf="activeTab === 'configure'" class="config-grid">
+      <form class="panel config-panel" (ngSubmit)="saveRules()">
+        <div class="panel-heading">
+          <div><span class="step">01</span><h2>Eligibility thresholds</h2></div>
+          <span>Configurable</span>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">01</div>
+          <div><strong>Dealer vintage</strong><p>Minimum relationship with TVSCS</p></div>
+          <div class="compact-input"><input type="number" min="0" name="minimumVintageMonths" [(ngModel)]="config.minimumVintageMonths"><span>months</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">02</div>
+          <div><strong>Disbursal value</strong><p>Minimum last 3-month non-season average</p></div>
+          <div class="compact-input"><span>₹</span><input type="number" min="0" name="minimumThreeMonthAverageDisbursal" [(ngModel)]="config.minimumThreeMonthAverageDisbursal"></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">03</div>
+          <div><strong>Net bounce</strong><p>Maximum accepted percentage</p></div>
+          <div class="compact-input"><input type="number" min="0" step="0.1" name="maximumNetBouncePercentage" [(ngModel)]="config.maximumNetBouncePercentage"><span>%</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">04</div>
+          <div><strong>RCU status</strong><p>Reject when a fraud flag is raised</p></div>
+          <label class="switch"><input type="checkbox" name="rejectWhenRcuFraudFlagged" [(ngModel)]="config.rejectWhenRcuFraudFlagged"><i></i></label>
+        </div>
+        <div class="save-bar">
+          <p *ngIf="saveMessage">{{ saveMessage }}</p>
+          <button class="primary" type="submit" [disabled]="saving">{{ saving ? 'Publishing…' : 'Publish rule changes' }}</button>
+        </div>
+      </form>
+
+      <aside class="panel summary-panel">
+        <span class="step">LIVE</span>
+        <h2>Current policy</h2>
+        <p>A dealer is eligible only when every active rule passes.</p>
+        <dl>
+          <div><dt>Vintage</dt><dd>≥ {{ config.minimumVintageMonths }} months</dd></div>
+          <div><dt>Average disbursal</dt><dd>&gt; {{ formatCurrency(config.minimumThreeMonthAverageDisbursal) }}</dd></div>
+          <div><dt>Net bounce</dt><dd>&lt; {{ config.maximumNetBouncePercentage }}%</dd></div>
+          <div><dt>RCU fraud flag</dt><dd>{{ config.rejectWhenRcuFraudFlagged ? 'Must be clear' : 'Informational' }}</dd></div>
+        </dl>
+        <div class="model-note">
+          <strong>Portable decision model</strong>
+          <p>The matching JDM file can be opened in GoRules Editor or deployed to GoRules Agent/BRMS.</p>
+          <a href="/api/rules/decision-model" target="_blank">View JDM document ↗</a>
+        </div>
+      </aside>
+    </section>
+
+    <section *ngIf="activeTab === 'credit'" class="workspace">
+      <form class="panel form-panel" (ngSubmit)="evaluateCredit()">
+        <div class="panel-heading">
+          <div>
+            <span class="step">01</span>
+            <h2>Credit application inputs</h2>
+          </div>
+          <span class="required-note">9 policy checks</span>
+        </div>
+
+        <div class="field-row">
+          <label>
+            <span>Dealer code</span>
+            <input name="creditDealerCode" [(ngModel)]="creditDealer.dealerCode" required>
+          </label>
+          <label>
+            <span>Dealer name</span>
+            <input name="creditDealerName" [(ngModel)]="creditDealer.dealerName" required>
+          </label>
+        </div>
+
+        <label>
+          <span>Borrower type</span>
+          <select name="borrowerType" [(ngModel)]="creditDealer.borrowerType">
+            <option value="INDIVIDUAL_OR_PROPRIETOR">Individual / Proprietor</option>
+            <option value="DIRECTOR_OR_PARTNER">Director / Partner</option>
+          </select>
+        </label>
+        <label>
+          <span>TA amount requested</span>
+          <div class="input-unit prefix"><b>₹</b><input type="number" min="0" name="taAmountRequested" [(ngModel)]="creditDealer.taAmountRequested" required></div>
+        </label>
+
+        <div class="field-row">
+          <label>
+            <span>Bureau score (consumer)</span>
+            <input type="number" min="0" name="bureauScore" [(ngModel)]="creditDealer.bureauScore">
+          </label>
+          <label>
+            <span>Commercial CIBIL score</span>
+            <input type="number" min="0" name="commercialCibilScore" [(ngModel)]="creditDealer.commercialCibilScore">
+          </label>
+        </div>
+        <label>
+          <span>CMR (commercial exposure only)</span>
+          <input type="number" min="1" max="10" name="cmr" [(ngModel)]="creditDealer.cmr">
+        </label>
+
+        <label class="toggle-row">
+          <div><span>30+ delinquency in last 6 months</span></div>
+          <input type="checkbox" name="delinquency30PlusLast6Months" [(ngModel)]="creditDealer.delinquency30PlusLast6Months"><i></i>
+        </label>
+        <label class="toggle-row">
+          <div><span>90+/DBT/SUB/LSS/write-off in last 3 years</span></div>
+          <input type="checkbox" name="severeDelinquencyLast3Years" [(ngModel)]="creditDealer.severeDelinquencyLast3Years"><i></i>
+        </label>
+        <label class="toggle-row">
+          <div><span>On negative / wilful defaulter list</span></div>
+          <input type="checkbox" name="onNegativeOrWilfulDefaulterList" [(ngModel)]="creditDealer.onNegativeOrWilfulDefaulterList"><i></i>
+        </label>
+        <label class="toggle-row">
+          <div><span>CIBIL consent obtained</span></div>
+          <input type="checkbox" name="cibilConsentObtained" [(ngModel)]="creditDealer.cibilConsentObtained"><i></i>
+        </label>
+
+        <div class="field-row">
+          <label>
+            <span>Business vintage (months)</span>
+            <input type="number" min="0" name="businessVintageMonths" [(ngModel)]="creditDealer.businessVintageMonths">
+          </label>
+          <label>
+            <span>TVSCS vintage (months)</span>
+            <input type="number" min="0" name="tvscsVintageMonths" [(ngModel)]="creditDealer.tvscsVintageMonths">
+          </label>
+        </div>
+
+        <label class="toggle-row">
+          <div><span>KYC / application form / photo complete</span></div>
+          <input type="checkbox" name="kycCompleted" [(ngModel)]="creditDealer.kycCompleted"><i></i>
+        </label>
+        <label>
+          <span>Retail finance volume (last 6 months)</span>
+          <div class="input-unit prefix"><b>₹</b><input type="number" min="0" name="retailFinanceVolumeLast6Months" [(ngModel)]="creditDealer.retailFinanceVolumeLast6Months"></div>
+        </label>
+        <label class="toggle-row">
+          <div><span>Required financial documents submitted</span></div>
+          <input type="checkbox" name="requiredFinancialDocumentsSubmitted" [(ngModel)]="creditDealer.requiredFinancialDocumentsSubmitted"><i></i>
+        </label>
+        <label class="toggle-row">
+          <div><span>Positive PAT for last 2 years</span></div>
+          <input type="checkbox" name="positivePatLastTwoYears" [(ngModel)]="creditDealer.positivePatLastTwoYears"><i></i>
+        </label>
+        <label class="toggle-row">
+          <div><span>Sales in increasing trend</span></div>
+          <input type="checkbox" name="salesIncreasingTrend" [(ngModel)]="creditDealer.salesIncreasingTrend"><i></i>
+        </label>
+        <label class="toggle-row">
+          <div><span>Negative net worth</span></div>
+          <input type="checkbox" name="negativeNetWorth" [(ngModel)]="creditDealer.negativeNetWorth"><i></i>
+        </label>
+        <div class="field-row">
+          <label>
+            <span>Penetration percentage</span>
+            <div class="input-unit"><input type="number" min="0" step="0.1" name="penetrationPercentage" [(ngModel)]="creditDealer.penetrationPercentage"><b>%</b></div>
+          </label>
+          <label>
+            <span>Positive trade references</span>
+            <input type="number" min="0" name="positiveTradeReferencesCount" [(ngModel)]="creditDealer.positiveTradeReferencesCount">
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label>
+            <span>30+ percentage</span>
+            <div class="input-unit"><input type="number" min="0" step="0.1" name="thirtyPlusPercentage" [(ngModel)]="creditDealer.thirtyPlusPercentage"><b>%</b></div>
+          </label>
+          <label>
+            <span>National average 30+</span>
+            <div class="input-unit"><input type="number" min="0" step="0.1" name="nationalAverageThirtyPlusPercentage" [(ngModel)]="creditDealer.nationalAverageThirtyPlusPercentage"><b>%</b></div>
+          </label>
+        </div>
+        <div class="field-row">
+          <label>
+            <span>90+ percentage</span>
+            <div class="input-unit"><input type="number" min="0" step="0.1" name="ninetyPlusPercentage" [(ngModel)]="creditDealer.ninetyPlusPercentage"><b>%</b></div>
+          </label>
+          <label>
+            <span>National average 90+</span>
+            <div class="input-unit"><input type="number" min="0" step="0.1" name="nationalAverageNinetyPlusPercentage" [(ngModel)]="creditDealer.nationalAverageNinetyPlusPercentage"><b>%</b></div>
+          </label>
+        </div>
+
+        <label class="toggle-row">
+          <div><span>Restricted / policy actioned dealer</span></div>
+          <input type="checkbox" name="policyActionedDealer" [(ngModel)]="creditDealer.policyActionedDealer"><i></i>
+        </label>
+        <label class="toggle-row">
+          <div><span>Dealer blocked (RCU / collection / policy)</span></div>
+          <input type="checkbox" name="dealerBlocked" [(ngModel)]="creditDealer.dealerBlocked"><i></i>
+        </label>
+        <label class="toggle-row">
+          <div><span>External credit rating validated</span><small>Required only above policy threshold</small></div>
+          <input type="checkbox" name="externalCreditRatingValidated" [(ngModel)]="creditDealer.externalCreditRatingValidated"><i></i>
+        </label>
+
+        <button class="primary" type="submit" [disabled]="creditLoading">
+          {{ creditLoading ? 'Evaluating…' : 'Run credit check' }}
+          <span>→</span>
+        </button>
+      </form>
+
+      <div class="results-column">
+        <div class="empty-state panel" *ngIf="!creditResult">
+          <div class="radar"><span></span></div>
+          <h2>Ready to evaluate</h2>
+          <p>Enter dealer credit information and run the credit policy engine to see a decision with each rule outcome.</p>
+          <div class="rule-preview">
+            <span>9</span>
+            <div><strong>Policy checks</strong><small>Bureau · Continuity · KYC · Limits · Financials · Portfolio · Risk · Rating</small></div>
+          </div>
+        </div>
+
+        <ng-container *ngIf="creditResult">
+          <div class="decision-card" [class.approved]="creditResult.approved" [class.rejected]="!creditResult.approved">
+            <div class="decision-icon">{{ creditResult.approved ? '✓' : '!' }}</div>
+            <div>
+              <span>DECISION</span>
+              <h2>{{ creditResult.approved ? 'Credit approved' : 'Credit declined' }}</h2>
+              <p>{{ creditResult.dealerName }} · {{ creditResult.dealerCode }}</p>
+            </div>
+          </div>
+
+          <div class="panel trace">
+            <div class="panel-heading">
+              <div><span class="step">02</span><h2>Decision trace</h2></div>
+              <span>{{ creditResult.outcomes.length }} rules evaluated</span>
+            </div>
+            <article *ngFor="let outcome of creditResult.outcomes">
+              <div class="outcome-icon" [class.pass]="outcome.passed">{{ outcome.passed ? '✓' : '×' }}</div>
+              <div class="outcome-copy">
+                <div><strong>{{ outcome.label }}</strong><span [class.pass-text]="outcome.passed">{{ outcome.passed ? 'Passed' : 'Failed' }}</span></div>
+                <p>{{ outcome.actual }} <em>against</em> {{ outcome.expected }}</p>
+                <small>{{ outcome.reason }}</small>
+              </div>
+            </article>
+          </div>
+          <div class="next-step">
+            <div><span>→</span><div><strong>Next step</strong><p>Continue to Apply for Trade Advance</p></div></div>
+            <small>All dealers continue, regardless of decision.</small>
+          </div>
+        </ng-container>
+      </div>
+    </section>
+
+    <section *ngIf="activeTab === 'credit-configure'" class="config-grid">
+      <form class="panel config-panel" (ngSubmit)="saveCreditRules()">
+        <div class="panel-heading">
+          <div><span class="step">01</span><h2>Credit policy thresholds</h2></div>
+          <span>Configurable</span>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">01</div>
+          <div><strong>Bureau score (individual/proprietor)</strong><p>Minimum consumer bureau score</p></div>
+          <div class="compact-input"><input type="number" min="0" name="minBureauScoreIndividualProprietor" [(ngModel)]="creditConfig.minBureauScoreIndividualProprietor"><span>score</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">02</div>
+          <div><strong>Bureau score (director/partner)</strong><p>Minimum consumer bureau score</p></div>
+          <div class="compact-input"><input type="number" min="0" name="minBureauScoreDirectorPartner" [(ngModel)]="creditConfig.minBureauScoreDirectorPartner"><span>score</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">03</div>
+          <div><strong>Consumer bureau ceiling</strong><p>TA amount up to which consumer bureau applies</p></div>
+          <div class="compact-input"><span>₹</span><input type="number" min="0" name="consumerBureauTaAmountCeiling" [(ngModel)]="creditConfig.consumerBureauTaAmountCeiling"></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">04</div>
+          <div><strong>Commercial CIBIL score</strong><p>Minimum score above the consumer ceiling</p></div>
+          <div class="compact-input"><input type="number" min="0" name="minCommercialCibilScore" [(ngModel)]="creditConfig.minCommercialCibilScore"><span>score</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">05</div>
+          <div><strong>Maximum CMR</strong><p>Commercial exposure ceiling</p></div>
+          <div class="compact-input"><input type="number" min="1" max="10" name="maxCmr" [(ngModel)]="creditConfig.maxCmr"><span>CMR</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">06</div>
+          <div><strong>Business vintage</strong><p>Minimum business stability</p></div>
+          <div class="compact-input"><input type="number" min="0" name="minBusinessVintageMonths" [(ngModel)]="creditConfig.minBusinessVintageMonths"><span>months</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">07</div>
+          <div><strong>TVSCS vintage</strong><p>Alternative minimum relationship</p></div>
+          <div class="compact-input"><input type="number" min="0" name="minTvscsVintageMonths" [(ngModel)]="creditConfig.minTvscsVintageMonths"><span>months</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">08</div>
+          <div><strong>Minimum TA limit</strong><p>Floor for the requested amount</p></div>
+          <div class="compact-input"><span>₹</span><input type="number" min="0" name="minTaLimit" [(ngModel)]="creditConfig.minTaLimit"></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">09</div>
+          <div><strong>Maximum TA limit</strong><p>Ceiling for the requested amount</p></div>
+          <div class="compact-input"><span>₹</span><input type="number" min="0" name="maxTaLimit" [(ngModel)]="creditConfig.maxTaLimit"></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">10</div>
+          <div><strong>External rating threshold</strong><p>Required above this TA amount</p></div>
+          <div class="compact-input"><span>₹</span><input type="number" min="0" name="externalRatingRequiredAboveTaAmount" [(ngModel)]="creditConfig.externalRatingRequiredAboveTaAmount"></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">11</div>
+          <div><strong>Minimum penetration</strong><p>Over first 6 months and thereafter</p></div>
+          <div class="compact-input"><input type="number" min="0" step="0.1" name="minPenetrationPercentage" [(ngModel)]="creditConfig.minPenetrationPercentage"><span>%</span></div>
+        </div>
+        <div class="rule-editor">
+          <div class="rule-number">12</div>
+          <div><strong>Positive trade references</strong><p>Minimum jointly validated references</p></div>
+          <div class="compact-input"><input type="number" min="0" name="minPositiveTradeReferences" [(ngModel)]="creditConfig.minPositiveTradeReferences"><span>refs</span></div>
+        </div>
+        <div class="save-bar">
+          <p *ngIf="creditSaveMessage">{{ creditSaveMessage }}</p>
+          <button class="primary" type="submit" [disabled]="creditSaving">{{ creditSaving ? 'Publishing…' : 'Publish policy changes' }}</button>
+        </div>
+      </form>
+
+      <aside class="panel summary-panel">
+        <span class="step">LIVE</span>
+        <h2>Current credit policy</h2>
+        <p>A dealer is credit-approved only when every active check passes.</p>
+        <dl>
+          <div><dt>Bureau score</dt><dd>≥ {{ creditConfig.minBureauScoreIndividualProprietor }} / {{ creditConfig.minBureauScoreDirectorPartner }}</dd></div>
+          <div><dt>Vintage</dt><dd>≥ {{ creditConfig.minBusinessVintageMonths }} or {{ creditConfig.minTvscsVintageMonths }} months</dd></div>
+          <div><dt>TA limit range</dt><dd>{{ formatCurrency(creditConfig.minTaLimit) }} – {{ formatCurrency(creditConfig.maxTaLimit) }}</dd></div>
+          <div><dt>Penetration</dt><dd>≥ {{ creditConfig.minPenetrationPercentage }}%</dd></div>
+          <div><dt>Trade references</dt><dd>≥ {{ creditConfig.minPositiveTradeReferences }}</dd></div>
+          <div><dt>External rating above</dt><dd>{{ formatCurrency(creditConfig.externalRatingRequiredAboveTaAmount) }}</dd></div>
+        </dl>
+        <div class="model-note">
+          <strong>Portable decision model</strong>
+          <p>The matching JDM file can be opened in GoRules Editor or deployed to GoRules Agent/BRMS.</p>
+          <a href="/api/credit/decision-model" target="_blank">View JDM document ↗</a>
+        </div>
+      </aside>
+    </section>
+
+    <section *ngIf="activeTab === 'deviation-approval'" class="panel form-panel">
+      <app-deviation-approval></app-deviation-approval>
+    </section>
+
+    <section *ngIf="activeTab === 'user-management'" class="panel form-panel">
+      <app-user-management></app-user-management>
+    </section>
+
+    <app-apply-journey *ngIf="activeTab === 'journey'"></app-apply-journey>
+  </main>
+</div>

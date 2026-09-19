@@ -1,0 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: #f4f6f4; color: #17251f; }
+body { font-family: 'DM Sans', Arial, sans-serif; }
+button, input { font-family: inherit; }

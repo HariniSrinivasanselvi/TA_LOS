@@ -1,0 +1,42 @@
+<div class="panel-heading">
+  <div><span class="step">◈</span><h2>Deviation approval queue</h2></div>
+  <span class="required-note">{{ items.length }} pending</span>
+</div>
+
+<div class="alert error" *ngIf="error">{{ error }}</div>
+<div class="alert success" *ngIf="message">{{ message }}</div>
+
+<div class="loading-block" *ngIf="loading">
+  <div class="spinner"></div>
+  <p>Loading pending deviations…</p>
+</div>
+
+<div class="empty-state panel" *ngIf="!loading && items.length === 0">
+  <h2>All clear</h2>
+  <p>There are no applications waiting for deviation approval right now.</p>
+</div>
+
+<div class="deviation-list" *ngIf="!loading && items.length > 0">
+  <article class="deviation-card" *ngFor="let item of items">
+    <header>
+      <div>
+        <strong>{{ item.dealerName }}</strong>
+        <span>Application #{{ item.applicationId }}</span>
+      </div>
+      <div class="amount">{{ formatCurrency(item.requestedAmount) }}</div>
+    </header>
+    <p class="reason"><strong>{{ item.deviationCode }}</strong> — {{ item.deviationReason }}</p>
+    <label>
+      <span>Remarks (optional)</span>
+      <textarea rows="2" [(ngModel)]="remarksByApplication[item.applicationId]" placeholder="Reviewer remarks"></textarea>
+    </label>
+    <div class="actions">
+      <button class="reject" [disabled]="busyApplicationId === item.applicationId" (click)="reject(item)">
+        {{ busyApplicationId === item.applicationId ? 'Working…' : 'Reject' }}
+      </button>
+      <button class="approve" [disabled]="busyApplicationId === item.applicationId" (click)="approve(item)">
+        {{ busyApplicationId === item.applicationId ? 'Working…' : 'Approve' }}
+      </button>
+    </div>
+  </article>
+</div>
