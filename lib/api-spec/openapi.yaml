@@ -1,0 +1,129 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Trade Advance eligibility rule engine API
+servers:
+  - url: /api
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /rules/config:
+    get:
+      operationId: getRuleConfiguration
+      responses:
+        "200":
+          description: Current rule configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuleConfiguration"
+    put:
+      operationId: updateRuleConfiguration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RuleConfigurationUpdate"
+      responses:
+        "200":
+          description: Updated rule configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuleConfiguration"
+  /eligibility/evaluate:
+    post:
+      operationId: evaluateEligibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibilityInput"
+      responses:
+        "200":
+          description: Eligibility decision and rule trace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityResult"
+  /rules/decision-model:
+    get:
+      operationId: getDecisionModel
+      responses:
+        "200":
+          description: Portable GoRules JDM document
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+        engine: { type: string }
+    RuleConfiguration:
+      allOf:
+        - $ref: "#/components/schemas/RuleConfigurationUpdate"
+        - type: object
+          required: [version, updatedAt]
+          properties:
+            version: { type: integer, format: int64 }
+            updatedAt: { type: string, format: date-time }
+    RuleConfigurationUpdate:
+      type: object
+      required: [minimumVintageMonths, minimumThreeMonthAverageDisbursal, maximumNetBouncePercentage, rejectWhenRcuFraudFlagged]
+      properties:
+        minimumVintageMonths: { type: integer, minimum: 0 }
+        minimumThreeMonthAverageDisbursal: { type: number, minimum: 0 }
+        maximumNetBouncePercentage: { type: number, minimum: 0 }
+        rejectWhenRcuFraudFlagged: { type: boolean }
+    EligibilityInput:
+      type: object
+      required: [dealerCode, dealerName, dealerVintageMonths, lastThreeMonthAverageDisbursal, netBouncePercentage, rcuFraudFlagged]
+      properties:
+        dealerCode: { type: string, minLength: 1 }
+        dealerName: { type: string, minLength: 1 }
+        dealerVintageMonths: { type: integer, minimum: 0 }
+        lastThreeMonthAverageDisbursal: { type: number, minimum: 0 }
+        netBouncePercentage: { type: number, minimum: 0 }
+        rcuFraudFlagged: { type: boolean }
+    RuleOutcome:
+      type: object
+      required: [ruleId, label, passed, actual, expected, reason]
+      properties:
+        ruleId: { type: string }
+        label: { type: string }
+        passed: { type: boolean }
+        actual: { type: string }
+        expected: { type: string }
+        reason: { type: string }
+    EligibilityResult:
+      type: object
+      required: [dealerCode, dealerName, status, eligible, nextScreen, ruleVersion, evaluatedAt, outcomes]
+      properties:
+        dealerCode: { type: string }
+        dealerName: { type: string }
+        status: { type: string, enum: [ELIGIBLE, NOT_ELIGIBLE] }
+        eligible: { type: boolean }
+        nextScreen: { type: string, enum: [APPLY_FOR_TRADE_ADVANCE] }
+        ruleVersion: { type: integer, format: int64 }
+        evaluatedAt: { type: string, format: date-time }
+        outcomes:
+          type: array
+          items:
+            $ref: "#/components/schemas/RuleOutcome"
