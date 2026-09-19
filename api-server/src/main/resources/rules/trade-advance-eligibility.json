@@ -1,0 +1,63 @@
+{
+  "name": "Trade Advance Initial Eligibility",
+  "description": "Portable GoRules JDM definition for the four initial TVSCS dealer eligibility checks.",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "inputNode",
+      "name": "Dealer application",
+      "position": { "x": 0, "y": 160 },
+      "content": { "schema": "" }
+    },
+    {
+      "id": "eligibility",
+      "type": "decisionTableNode",
+      "name": "Initial eligibility criteria",
+      "position": { "x": 280, "y": 160 },
+      "content": {
+        "hitPolicy": "collect",
+        "inputs": [
+          { "id": "vintage", "name": "Vintage months", "field": "dealerVintageMonths" },
+          { "id": "sales", "name": "3-month average", "field": "lastThreeMonthAverageDisbursal" },
+          { "id": "bounce", "name": "Net bounce %", "field": "netBouncePercentage" },
+          { "id": "fraud", "name": "RCU fraud flag", "field": "rcuFraudFlagged" }
+        ],
+        "outputs": [
+          { "id": "status", "name": "Status", "field": "status" },
+          { "id": "next", "name": "Next screen", "field": "nextScreen" }
+        ],
+        "rules": [
+          {
+            "_id": "eligible",
+            "vintage": ">= 6",
+            "sales": "> 200000",
+            "bounce": "< 25",
+            "fraud": "false",
+            "status": "\"ELIGIBLE\"",
+            "next": "\"APPLY_FOR_TRADE_ADVANCE\""
+          },
+          {
+            "_id": "not-eligible",
+            "vintage": "",
+            "sales": "",
+            "bounce": "",
+            "fraud": "",
+            "status": "\"NOT_ELIGIBLE\"",
+            "next": "\"APPLY_FOR_TRADE_ADVANCE\""
+          }
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "outputNode",
+      "name": "Eligibility result",
+      "position": { "x": 640, "y": 160 },
+      "content": { "schema": "" }
+    }
+  ],
+  "edges": [
+    { "id": "input-to-eligibility", "sourceId": "input", "targetId": "eligibility", "sourceHandle": "output" },
+    { "id": "eligibility-to-output", "sourceId": "eligibility", "targetId": "output", "sourceHandle": "output" }
+  ]
+}

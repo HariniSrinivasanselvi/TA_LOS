@@ -1,0 +1,11 @@
+{
+  "name": "@workspace/api-server",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=${PORT:-8080}",
+    "build": "mvn -q -DskipTests package",
+    "start": "java -jar target/trade-advance-rule-engine-0.1.0.jar",
+    "typecheck": "mvn -q -DskipTests compile"
+  }
+}

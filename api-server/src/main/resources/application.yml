@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: trade-advance-rule-engine
+  datasource:
+    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE:prefer}
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+app:
+  auth:
+    issuer-url: ${ISSUER_URL:https://replit.com/oidc}
+    client-id: ${REPL_ID:}
+    domains: ${REPLIT_DOMAINS:}
+server:
+  shutdown: graceful
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

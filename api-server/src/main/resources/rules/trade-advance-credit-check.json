@@ -1,0 +1,82 @@
+{
+  "name": "Trade Advance Credit Check",
+  "description": "Portable GoRules JDM definition for the Trade Advance credit policy checks (bureau, continuity, KYC, limits, financials, portfolio, risk, rating).",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "inputNode",
+      "name": "Credit application",
+      "position": { "x": 0, "y": 200 },
+      "content": { "schema": "" }
+    },
+    {
+      "id": "credit-check",
+      "type": "decisionTableNode",
+      "name": "Credit policy checks",
+      "position": { "x": 280, "y": 200 },
+      "content": {
+        "hitPolicy": "collect",
+        "inputs": [
+          { "id": "bureauScore", "name": "Bureau score", "field": "bureauScore" },
+          { "id": "commercialCibilScore", "name": "Commercial CIBIL score", "field": "commercialCibilScore" },
+          { "id": "cmr", "name": "CMR", "field": "cmr" },
+          { "id": "conduct", "name": "Adverse bureau conduct", "field": "delinquency30PlusLast6Months" },
+          { "id": "consent", "name": "CIBIL consent", "field": "cibilConsentObtained" },
+          { "id": "vintage", "name": "Business/TVSCS vintage", "field": "businessVintageMonths" },
+          { "id": "kyc", "name": "KYC complete", "field": "kycCompleted" },
+          { "id": "taAmount", "name": "TA amount requested", "field": "taAmountRequested" },
+          { "id": "docs", "name": "Financial documents", "field": "requiredFinancialDocumentsSubmitted" },
+          { "id": "pat", "name": "Positive PAT", "field": "positivePatLastTwoYears" },
+          { "id": "salesTrend", "name": "Sales trend", "field": "salesIncreasingTrend" },
+          { "id": "netWorth", "name": "Net worth", "field": "negativeNetWorth" },
+          { "id": "penetration", "name": "Penetration %", "field": "penetrationPercentage" },
+          { "id": "tradeRefs", "name": "Positive trade references", "field": "positiveTradeReferencesCount" },
+          { "id": "portfolio30", "name": "30+ vs national average", "field": "thirtyPlusPercentage" },
+          { "id": "portfolio90", "name": "90+ vs national average", "field": "ninetyPlusPercentage" },
+          { "id": "policyRisk", "name": "Policy actioned / blocked", "field": "policyActionedDealer" },
+          { "id": "rating", "name": "External credit rating", "field": "externalCreditRatingValidated" }
+        ],
+        "outputs": [
+          { "id": "status", "name": "Status", "field": "status" },
+          { "id": "next", "name": "Next screen", "field": "nextScreen" }
+        ],
+        "rules": [
+          {
+            "_id": "credit-approved",
+            "bureauScore": ">= 700",
+            "conduct": "false",
+            "consent": "true",
+            "vintage": ">= 6",
+            "kyc": "true",
+            "docs": "true",
+            "pat": "true",
+            "salesTrend": "true",
+            "netWorth": "false",
+            "penetration": ">= 10",
+            "tradeRefs": ">= 2",
+            "policyRisk": "false",
+            "status": "\"CREDIT_APPROVED\"",
+            "next": "\"APPLY_FOR_TRADE_ADVANCE\""
+          },
+          {
+            "_id": "credit-declined",
+            "bureauScore": "",
+            "status": "\"CREDIT_DECLINED\"",
+            "next": "\"APPLY_FOR_TRADE_ADVANCE\""
+          }
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "outputNode",
+      "name": "Credit decision",
+      "position": { "x": 640, "y": 200 },
+      "content": { "schema": "" }
+    }
+  ],
+  "edges": [
+    { "id": "input-to-credit-check", "sourceId": "input", "targetId": "credit-check", "sourceHandle": "output" },
+    { "id": "credit-check-to-output", "sourceId": "credit-check", "targetId": "output", "sourceHandle": "output" }
+  ]
+}
